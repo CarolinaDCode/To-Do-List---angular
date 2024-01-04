@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal, computed, effect } from '@angular/core';
+import { Component, Injector,signal, computed, effect, inject } from '@angular/core';
 import { Task } from './../../models/task.model';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -18,28 +18,8 @@ export class HomeComponent {
     'Crear servicio'
   ]);
 
-  tareas = signal<Task[]>([
-    {
-      id: Date.now(),
-      title: 'Instalar el angular CLI',
-      completed: false
-    },
-    {
-      id: Date.now(),
-      title: 'Crear proyecto',
-      completed: false
-    },
-    {
-      id: Date.now(),
-      title: 'Crear componente',
-      completed: false
-    },
-    {
-      id: Date.now(),
-      title: 'Crear servicio',
-      completed: false
-    }
-  ]);
+  /**Será un Array Vacio */
+  tareas = signal<Task[]>([]);
 
   filter = signal('all');
   tasksByFilter = computed(()=>{
@@ -74,13 +54,38 @@ export class HomeComponent {
   la voy almacenar en el localStorage
   */
   /** 
-   * En este caso effect nos sirve para hacer seguimiento a los cambios que existe en el objeto tareas
+   * En este caso effect nos sirve para hacer seguimiento a los cambios que existe en el objeto tareas.
+   * Este Effect debe ser agregado en otro lugar que no sea el constructor, porque corre con el array 
+   * que inicia en vacio y asi haya guardado tareas, al recargar inicia en vacio.
+   * El effect lee cualquier actividad, incluso el estado inicial, que es el array en vacio
    */
-  constructor() {
+    //Injector de effect
+  injector = inject(Injector);
+
+  /**
+   * ngOnInit: Cuándo Inicializa el componente
+   * Lectura: Se inicializa la aplicación, revisa si existe 'tasks',
+   * si existe, lo almacena en el array.
+   * Luego, evalua si hay cambios con effects y si hay los guarda en localStorage
+   */
+  ngOnInit(){
+    const storage = localStorage.getItem('tasks');
+    if(storage){
+      const tasks = JSON.parse(storage);
+      this.tareas.set(tasks);
+    }
+    this.trackTasks();
+  }
+
+  /**
+   * Cuándo effect es utilizado en otro lugar que no seas el constructor,
+   * debe ser utilizado con un inyector.
+   */
+  trackTasks(){
     effect(()=>{
       const tasks = this.tareas();
-      localStorage.setItem('tasks', tasks);
-    })
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    },{injector: this.injector})
   }
 
   newTaskCtrl = new FormControl();
